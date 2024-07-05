@@ -40,18 +40,35 @@ class TransformerModel(nn.Module):
         self.nhid = nhid
 
         self.init_weights()
-
+        
     def __setstate__(self, state):
         super().__setstate__(state)
         self.__dict__.setdefault('efficient_eval_masking', False)
 
     @staticmethod
     def generate_square_subsequent_mask(sz):
+        """_summary_
+
+        Args:
+            sz (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
         return bool_mask_to_att_mask(mask)
 
     @staticmethod
     def generate_D_q_matrix(sz, query_size):
+        """_summary_
+
+        Args:
+            sz (_type_): _description_
+            query_size (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         train_size = sz-query_size
         mask = torch.zeros(sz,sz) == 0
         mask[:,train_size:].zero_()
@@ -60,15 +77,51 @@ class TransformerModel(nn.Module):
 
     @staticmethod
     def generate_global_att_query_matrix(num_global_att_tokens, seq_len, num_query_tokens):
+        """_summary_
+
+        Args:
+            num_global_att_tokens (_type_): _description_
+            seq_len (_type_): _description_
+            num_query_tokens (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         train_size = seq_len + num_global_att_tokens - num_query_tokens
         sz = seq_len + num_global_att_tokens
         mask = torch.zeros(num_query_tokens, sz) == 0
         mask[:,train_size:].zero_()
         mask[:,train_size:] |= torch.eye(num_query_tokens) == 1
         return bool_mask_to_att_mask(mask)
-
+    
+    def attention_weights_enc(self):
+        # TODO: check, change on mehtod that iterates over the layers and returns the name, object
+        # TODO: make the naming consistent in the encoder; remove dict
+        attention_weights = []
+        for l in self.transformer_encoder.layers:
+            attention_weights.append(l.attn_output_weights)
+        return attention_weights
+     
+    def embeddings_enc(self):
+        # TODO: check, change on mehtod that iterates over the layers and returns the name, object
+        # TODO: make the naming consistent in the encoder; remove dict
+        attention_weights = []
+        for l in self.transformer_encoder.layers:
+            attention_weights.append(l.embeddings)
+        return attention_weights       
+            
     @staticmethod
     def generate_global_att_trainset_matrix(num_global_att_tokens, seq_len, num_query_tokens):
+        """_summary_
+
+        Args:
+            num_global_att_tokens (_type_): _description_
+            seq_len (_type_): _description_
+            num_query_tokens (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         train_size = seq_len + num_global_att_tokens - num_query_tokens
         trainset_size = seq_len - num_query_tokens
         mask = torch.zeros(trainset_size, num_global_att_tokens) == 0
@@ -78,6 +131,16 @@ class TransformerModel(nn.Module):
 
     @staticmethod
     def generate_global_att_globaltokens_matrix(num_global_att_tokens, seq_len, num_query_tokens):
+        """_summary_
+
+        Args:
+            num_global_att_tokens (_type_): _description_
+            seq_len (_type_): _description_
+            num_query_tokens (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         mask = torch.zeros(num_global_att_tokens, num_global_att_tokens+seq_len-num_query_tokens) == 0
         return bool_mask_to_att_mask(mask)
 
